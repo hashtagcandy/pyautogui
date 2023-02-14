@@ -1,34 +1,23 @@
 # Windows implementation of PyAutoGUI functions.
 # BSD license
 # Al Sweigart al@inventwithpython.com
-
 import ctypes
 import ctypes.wintypes
 import pyautogui
-from pyautogui import LEFT, MIDDLE, RIGHT
-
 import sys
 if sys.platform !=  'win32':
     raise Exception('The pyautogui_win module should only be loaded on a Windows system.')
-
-
 # Fixes the scaling issues where PyAutoGUI was reporting the wrong resolution:
 try:
    ctypes.windll.user32.SetProcessDPIAware()
 except AttributeError:
     pass # Windows XP doesn't support this, so just do nothing.
-
-
 """
 A lot of this code is probably repeated from win32 extensions module, but I didn't want to have that dependency.
-
 Note: According to http://msdn.microsoft.com/en-us/library/windows/desktop/ms646260(v=vs.85).aspx
-the ctypes.windll.user32.mouse_event() function has been superseded by SendInput.
-
+the ctypes.windll.user32.mouse_event() function has been superceded by SendInput.
 SendInput() is documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms646310(v=vs.85).aspx
-
 UPDATE: SendInput() doesn't seem to be working for me. I've switched back to mouse_event()."""
-
 
 # Event codes to be passed to the mouse_event() win32 function.
 # Documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms646273(v=vs.85).aspx
@@ -48,14 +37,16 @@ MOUSEEVENTF_WHEEL = 0x0800
 MOUSEEVENTF_HWHEEL = 0x01000
 
 # Documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms646304(v=vs.85).aspx
-KEYEVENTF_KEYDOWN = 0x0000 # Technically this constant doesn't exist in the MS documentation. It's the lack of KEYEVENTF_KEYUP that means pressing the key down.
 KEYEVENTF_KEYUP = 0x0002
-
 # Documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms646270(v=vs.85).aspx
 INPUT_MOUSE = 0
 INPUT_KEYBOARD = 1
-
-
+# This ctypes structure is for a Win32 POINT structure,
+# which is documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/dd162805(v=vs.85).aspx
+# The POINT structure is used by GetCursorPos().
+class POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long),
+                ("y", ctypes.c_long)]
 # These ctypes structures are for Win32 INPUT, MOUSEINPUT, KEYBDINPUT, and HARDWAREINPUT structures,
 # used by SendInput and documented here: http://msdn.microsoft.com/en-us/library/windows/desktop/ms646270(v=vs.85).aspx
 # Thanks to BSH for this StackOverflow answer: https://stackoverflow.com/questions/18566289/how-would-you-recreate-this-windows-api-structure-with-ctypes
@@ -68,7 +59,6 @@ class MOUSEINPUT(ctypes.Structure):
         ('time', ctypes.wintypes.DWORD),
         ('dwExtraInfo', ctypes.POINTER(ctypes.wintypes.ULONG)),
     ]
-
 class KEYBDINPUT(ctypes.Structure):
     _fields_ = [
         ('wVk', ctypes.wintypes.WORD),
@@ -77,14 +67,12 @@ class KEYBDINPUT(ctypes.Structure):
         ('time', ctypes.wintypes.DWORD),
         ('dwExtraInfo', ctypes.POINTER(ctypes.wintypes.ULONG)),
     ]
-
 class HARDWAREINPUT(ctypes.Structure):
     _fields_ = [
         ('uMsg', ctypes.wintypes.DWORD),
         ('wParamL', ctypes.wintypes.WORD),
         ('wParamH', ctypes.wintypes.DWORD)
     ]
-
 class INPUT(ctypes.Structure):
     class _I(ctypes.Union):
         _fields_ = [
@@ -92,22 +80,16 @@ class INPUT(ctypes.Structure):
             ('ki', KEYBDINPUT),
             ('hi', HARDWAREINPUT),
         ]
-
     _anonymous_ = ('i', )
     _fields_ = [
         ('type', ctypes.wintypes.DWORD),
         ('i', _I),
     ]
 # End of the SendInput win32 data structures.
-
-
-
 """ Keyboard key mapping for pyautogui:
 Documented at http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
-
 The *KB dictionaries in pyautogui map a string that can be passed to keyDown(),
 keyUp(), or press() into the code used for the OS-specific keyboard function.
-
 They should always be lowercase, and the same keys should be used across all OSes."""
 keyboardMapping = dict([(key, None) for key in pyautogui.KEY_NAMES])
 keyboardMapping.update({
@@ -139,7 +121,7 @@ keyboardMapping.update({
     'accept': 0x1e, # VK_ACCEPT
     'modechange': 0x1f, # VK_MODECHANGE
     ' ': 0x20, # VK_SPACE
-    'space': 0x20, # VK_SPACE
+    'space': 0x20,
     'pgup': 0x21, # VK_PRIOR
     'pgdn': 0x22, # VK_NEXT
     'pageup': 0x21, # VK_PRIOR
@@ -232,40 +214,46 @@ keyboardMapping.update({
     'launchmediaselect': 0xb5, # VK_LAUNCH_MEDIA_SELECT
     'launchapp1': 0xb6, # VK_LAUNCH_APP1
     'launchapp2': 0xb7, # VK_LAUNCH_APP2
-    })
-
-    # There are other virtual key constants that are not used here because the printable ascii keys are
-    # handled in the following `for` loop.
-    # The virtual key constants that aren't used are:
-    # VK_OEM_1, VK_OEM_PLUS, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PERIOD, VK_OEM_2, VK_OEM_3, VK_OEM_4,
-    # VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_8, VK_PACKET, VK_ATTN, VK_CRSEL, VK_EXSEL, VK_EREOF,
-    # VK_PLAY, VK_ZOOM, VK_NONAME, VK_PA1, VK_OEM_CLEAR
-
+    #';': 0xba, # VK_OEM_1
+    #'+': 0xbb, # VK_OEM_PLUS
+    #',': 0xbc, # VK_OEM_COMMA
+    #'-': 0xbd, # VK_OEM_MINUS
+    #'.': 0xbe, # VK_OEM_PERIOD
+    #'/': 0xbf, # VK_OEM_2
+    #'~': 0xc0, # VK_OEM_3
+    #'[': 0xdb, # VK_OEM_4
+    #'|': 0xdc, # VK_OEM_5
+    #']': 0xdd, # VK_OEM_6
+    #"'": 0xde, # VK_OEM_7
+    #'': 0xdf, # VK_OEM_8
+    #'': 0xe7, # VK_PACKET
+    #'': 0xf6, # VK_ATTN
+    #'': 0xf7, # VK_CRSEL
+    #'': 0xf8, # VK_EXSEL
+    #'': 0xf9, # VK_EREOF
+    #'': 0xfa, # VK_PLAY
+    #'': 0xfb, # VK_ZOOM
+    #'': 0xfc, # VK_NONAME
+    #'': 0xfd, # VK_PA1
+    #'': 0xfe, # VK_OEM_CLEAR
+})
 # Populate the basic printable ascii characters.
-# https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-vkkeyscana
 for c in range(32, 128):
     keyboardMapping[chr(c)] = ctypes.windll.user32.VkKeyScanA(ctypes.wintypes.WCHAR(chr(c)))
-
-
 def _keyDown(key):
     """Performs a keyboard key press without the release. This will put that
     key in a held down state.
-
     NOTE: For some reason, this does not seem to cause key repeats like would
     happen if a keyboard key was held down on a text field.
-
     Args:
       key (str): The key to be pressed down. The valid names are listed in
       pyautogui.KEY_NAMES.
-
     Returns:
       None
     """
     if key not in keyboardMapping or keyboardMapping[key] is None:
         return
-
     needsShift = pyautogui.isShiftCharacter(key)
-
     """
     # OLD CODE: The new code relies on having all keys be loaded in keyboardMapping from the start.
     if key in keyboardMapping.keys():
@@ -280,31 +268,25 @@ def _keyDown(key):
             needsShift = True
     """
     mods, vkCode = divmod(keyboardMapping[key], 0x100)
-
     for apply_mod, vk_mod in [(mods & 4, 0x12), (mods & 2, 0x11),
-        (mods & 1 or needsShift, 0x10)]: #HANKAKU not supported! mods & 8
+        (mods & 1 or needsShift, 0x10)]: #HANKAKU not suported! mods & 8
         if apply_mod:
-            ctypes.windll.user32.keybd_event(vk_mod, 0, KEYEVENTF_KEYDOWN, 0) #
-    ctypes.windll.user32.keybd_event(vkCode, 0, KEYEVENTF_KEYDOWN, 0)
+            ctypes.windll.user32.keybd_event(vk_mod, 0, 0, 0) #
+    ctypes.windll.user32.keybd_event(vkCode, 0, 0, 0)
     for apply_mod, vk_mod in [(mods & 1 or needsShift, 0x10), (mods & 2, 0x11),
-        (mods & 4, 0x12)]: #HANKAKU not supported! mods & 8
+        (mods & 4, 0x12)]: #HANKAKU not suported! mods & 8
         if apply_mod:
             ctypes.windll.user32.keybd_event(vk_mod, 0, KEYEVENTF_KEYUP, 0) #
-
-
 def _keyUp(key):
     """Performs a keyboard key release (without the press down beforehand).
-
     Args:
       key (str): The key to be released up. The valid names are listed in
       pyautogui.KEY_NAMES.
-
     Returns:
       None
     """
     if key not in keyboardMapping or keyboardMapping[key] is None:
         return
-
     needsShift = pyautogui.isShiftCharacter(key)
     """
     # OLD CODE: The new code relies on having all keys be loaded in keyboardMapping from the start.
@@ -320,148 +302,128 @@ def _keyUp(key):
             needsShift = True
     """
     mods, vkCode = divmod(keyboardMapping[key], 0x100)
-
     for apply_mod, vk_mod in [(mods & 4, 0x12), (mods & 2, 0x11),
-        (mods & 1 or needsShift, 0x10)]: #HANKAKU not supported! mods & 8
+        (mods & 1 or needsShift, 0x10)]: #HANKAKU not suported! mods & 8
         if apply_mod:
             ctypes.windll.user32.keybd_event(vk_mod, 0, 0, 0) #
     ctypes.windll.user32.keybd_event(vkCode, 0, KEYEVENTF_KEYUP, 0)
     for apply_mod, vk_mod in [(mods & 1 or needsShift, 0x10), (mods & 2, 0x11),
-        (mods & 4, 0x12)]: #HANKAKU not supported! mods & 8
+        (mods & 4, 0x12)]: #HANKAKU not suported! mods & 8
         if apply_mod:
             ctypes.windll.user32.keybd_event(vk_mod, 0, KEYEVENTF_KEYUP, 0) #
-
-
 def _position():
     """Returns the current xy coordinates of the mouse cursor as a two-integer
     tuple by calling the GetCursorPos() win32 function.
-
     Returns:
       (x, y) tuple of the current xy coordinates of the mouse cursor.
     """
-
-    cursor = ctypes.wintypes.POINT()
+    cursor = POINT()
     ctypes.windll.user32.GetCursorPos(ctypes.byref(cursor))
     return (cursor.x, cursor.y)
-
-
 def _size():
     """Returns the width and height of the screen as a two-integer tuple.
-
     Returns:
       (width, height) tuple of the screen size, in pixels.
     """
     return (ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1))
-
-
 def _moveTo(x, y):
     """Send the mouse move event to Windows by calling SetCursorPos() win32
     function.
-
     Args:
       button (str): The mouse button, either 'left', 'middle', or 'right'
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
-
     Returns:
       None
     """
     ctypes.windll.user32.SetCursorPos(x, y)
-    # This was a possible solution to issue #314 https://github.com/asweigart/pyautogui/issues/314
-    # but I'd like to hang on to SetCursorPos because mouse_event() has been superseded.
-    #_sendMouseEvent(MOUSEEVENTF_MOVE + MOUSEEVENTF_ABSOLUTE, x, y)
+    _sendMouseEvent(MOUSEEVENTF_MOVE + MOUSEEVENTF_ABSOLUTE, x, y)
 
 
 def _mouseDown(x, y, button):
     """Send the mouse down event to Windows by calling the mouse_event() win32
     function.
-
     Args:
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
       button (str): The mouse button, either 'left', 'middle', or 'right'
-
     Returns:
       None
     """
-    if button not in (LEFT, MIDDLE, RIGHT):
-        raise ValueError('button arg to _click() must be one of "left", "middle", or "right", not %s' % button)
-
-    if button == LEFT:
-        EV = MOUSEEVENTF_LEFTDOWN
-    elif button == MIDDLE:
-        EV = MOUSEEVENTF_MIDDLEDOWN
-    elif button == RIGHT:
-        EV = MOUSEEVENTF_RIGHTDOWN
-
-    try:
-        _sendMouseEvent(EV, x, y)
-    except (PermissionError, OSError):
-        # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
-        pass
-
-
+    if button == 'left':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_LEFTDOWN, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'middle':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_MIDDLEDOWN, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'right':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_RIGHTDOWN, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    else:
+        assert False, "button argument not in ('left', 'middle', 'right')"
 def _mouseUp(x, y, button):
     """Send the mouse up event to Windows by calling the mouse_event() win32
     function.
-
     Args:
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
       button (str): The mouse button, either 'left', 'middle', or 'right'
-
     Returns:
       None
     """
-    if button not in (LEFT, MIDDLE, RIGHT):
-        raise ValueError('button arg to _click() must be one of "left", "middle", or "right", not %s' % button)
-
-    if button == LEFT:
-        EV = MOUSEEVENTF_LEFTUP
-    elif button == MIDDLE:
-        EV = MOUSEEVENTF_MIDDLEUP
-    elif button == RIGHT:
-        EV = MOUSEEVENTF_RIGHTUP
-
-    try:
-        _sendMouseEvent(EV, x, y)
-    except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
-        pass
-
-
+    if button == 'left':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_LEFTUP, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'middle':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_MIDDLEUP, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'right':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_RIGHTUP, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    else:
+        assert False, "button argument not in ('left', 'middle', 'right')"
 def _click(x, y, button):
     """Send the mouse click event to Windows by calling the mouse_event() win32
     function.
-
     Args:
       button (str): The mouse button, either 'left', 'middle', or 'right'
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
-
     Returns:
       None
     """
-    if button not in (LEFT, MIDDLE, RIGHT):
-        raise ValueError('button arg to _click() must be one of "left", "middle", or "right", not %s' % button)
-
-    if button == LEFT:
-        EV = MOUSEEVENTF_LEFTCLICK
-    elif button == MIDDLE:
-        EV = MOUSEEVENTF_MIDDLECLICK
-    elif button ==RIGHT:
-        EV = MOUSEEVENTF_RIGHTCLICK
-
-    try:
-        _sendMouseEvent(EV, x, y)
-    except (PermissionError, OSError):
-        # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
-        pass
-
-
+    if button == 'left':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_LEFTCLICK, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'middle':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_MIDDLECLICK, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    elif button == 'right':
+        try:
+            _sendMouseEvent(MOUSEEVENTF_RIGHTCLICK, x, y)
+        except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
+            pass
+    else:
+        assert False, "button argument not in ('left', 'middle', 'right')"
 def _sendMouseEvent(ev, x, y, dwData=0):
     """The helper function that actually makes the call to the mouse_event()
     win32 function.
-
     Args:
       ev (int): The win32 code for the mouse event. Use one of the MOUSEEVENTF_*
       constants for this argument.
@@ -469,7 +431,6 @@ def _sendMouseEvent(ev, x, y, dwData=0):
       y (int): The y position of the mouse event.
       dwData (int): The argument for mouse_event()'s dwData parameter. So far
         this is only used by mouse scrolling.
-
     Returns:
       None
     """
@@ -485,36 +446,26 @@ def _sendMouseEvent(ev, x, y, dwData=0):
     #inputStruct.mi = mouseStruct
     #inputStruct.type = INPUT_MOUSE
     #ctypes.windll.user32.SendInput(1, ctypes.pointer(inputStruct), ctypes.sizeof(inputStruct))
-
-    # TODO Note: We need to handle additional buttons, which I believe is documented here:
-    # https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-mouse_event
-
     width, height = _size()
     convertedX = 65536 * x // width + 1
     convertedY = 65536 * y // height + 1
     ctypes.windll.user32.mouse_event(ev, ctypes.c_long(convertedX), ctypes.c_long(convertedY), dwData, 0)
-
     # TODO: Too many false positives with this code: See: https://github.com/asweigart/pyautogui/issues/108
     #if ctypes.windll.kernel32.GetLastError() != 0:
     #    raise ctypes.WinError()
-
-
 def _scroll(clicks, x=None, y=None):
     """Send the mouse vertical scroll event to Windows by calling the
     mouse_event() win32 function.
-
     Args:
       clicks (int): The amount of scrolling to do. A positive value is the mouse
       wheel moving forward (scrolling up), a negative value is backwards (down).
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
-
     Returns:
       None
     """
     startx, starty = _position()
     width, height = _size()
-
     if x is None:
         x = startx
     else:
@@ -529,40 +480,30 @@ def _scroll(clicks, x=None, y=None):
             y = 0
         elif y >= height:
             y = height - 1
-
     try:
         _sendMouseEvent(MOUSEEVENTF_WHEEL, x, y, dwData=clicks)
     except (PermissionError, OSError): # TODO: We need to figure out how to prevent these errors, see https://github.com/asweigart/pyautogui/issues/60
             pass
-
-
 def _hscroll(clicks, x, y):
     """Send the mouse horizontal scroll event to Windows by calling the
     mouse_event() win32 function.
-
     Args:
       clicks (int): The amount of scrolling to do. A positive value is the mouse
       wheel moving right, a negative value is moving left.
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
-
     Returns:
       None
     """
     return _scroll(clicks, x, y)
-
-
 def _vscroll(clicks, x, y):
     """A wrapper for _scroll(), which does vertical scrolling.
-
     Args:
       clicks (int): The amount of scrolling to do. A positive value is the mouse
       wheel moving forward (scrolling up), a negative value is backwards (down).
       x (int): The x position of the mouse event.
       y (int): The y position of the mouse event.
-
     Returns:
       None
     """
     return _scroll(clicks, x, y)
-
